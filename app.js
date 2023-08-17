@@ -5,6 +5,10 @@ const { v4: uuid } = require(`uuid`);
 app.use(express.json());
 const bcrypt = require("bcrypt");
 const saltRounds = 3;
+const validatorMail = require("email-validator");
+const passwordValidator = require("password-validator");
+const checkPassword = new passwordValidator();
+checkPassword.is().min(8).has().uppercase().has().lowercase();
 
 const users = [
   { id: uuid(), mail: `1@gmail.com`, password: 123 },
@@ -22,7 +26,7 @@ app.get(`/:id`, (req, res) => {
   UserId ? res.send(UserId) : res.send(`not find`);
 });
 
-app.post(`/`, (req, res) => {
+app.post(`/new`, (req, res) => {
   const { mail, password } = req.body;
   if (!mail || !password) {
     res.status(400).send(`enter mail and password`);
@@ -30,27 +34,37 @@ app.post(`/`, (req, res) => {
     if (users.find((element) => element.mail === mail)) {
       res.status(400).send(`User does exist`);
     } else {
-      const newUser = {
-        id: uuid(),
-        mail,
-        password: bcrypt.hashSync(password, saltRounds),
-      };
-      users.push(newUser);
-      res.send(users);
+      if (!validatorMail.validate(mail)) res.send(`invalid email`);
+      else if (!checkPassword.validate(password)) res.send(`invalid password`);
+      else {
+        const newUser = {
+          id: uuid(),
+          mail,
+          password: bcrypt.hashSync(password, saltRounds),
+        };
+        users.push(newUser);
+        res.send(users);
+      }
     }
   }
 });
 
 app.put(`/:id`, (req, res) => {
   const id = req.params.id;
-  const UserId = users.findIndex((element) => element.id === id);
+  const UserIndex = users.findIndex((element) => element.id === id);
   const { mail, password } = req.body;
-  users[UserId] = {
-    id: id,
-    mail,
-    password: bcrypt.hashSync(password, saltRounds),
-  };
-  res.send(users);
+  if (!mail || !password) {
+    res.status(400).send(`enter mail and password`);
+  } else if (!validatorMail.validate(mail)) res.send(`invalid email`);
+  else if (!checkPassword.validate(password)) res.send(`invalid password`);
+  else {
+    users[UserIndex] = {
+      id: id,
+      mail,
+      password: bcrypt.hashSync(password, saltRounds),
+    };
+    res.send(users);
+  }
 });
 
 app.delete(`/:id`, (req, res) => {
@@ -76,3 +90,5 @@ app.post(`/search`, (req, res) => {
 app.listen(port, () => {
   console.log(`server running ${port}`);
 });
+
+
